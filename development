@@ -1,0 +1,163 @@
+title: "Development"
+author: "quetzalli"
+date: "9/1/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(sf)
+library(raster)
+library(ggplot2)
+library(tidyverse)
+library(tmap)    # for static and interactive maps
+library(leaflet) # for interactive maps
+library(spData)
+vignette("sf1")
+```
+```{r}
+library(sp)
+world_sp=as(world, Class= "Spatial")
+world_sf= st_as_sf(world_sp)
+```
+
+```{r}
+
+Pop_Data<-Pop_Data
+#  rename(CN=`Country Name`)%>%
+ # rename(CC=`Country Code`)
+
+WBMundo<-world %>%
+  dplyr::select(name_long, iso_a2)%>%
+  rename(CN=name_long)%>%
+  rename(CC=iso_a2)%>%
+  left_join(Pop_Data, by="CN", "CC")
+
+WBMundo$CC.y[2] <- "TZA"
+WBMundo$CC.y[3] <- "SSF"
+WBMundo$CC.y[4] <- "CAN"
+WBMundo$CC.y[5] <- "USA"
+WBMundo$CC.y[6] <- "KAZ"
+WBMundo$CC.y[7] <- "UZB"
+WBMundo$CC.y[8] <- "PG"
+WBMundo$CC.y[12] <- "COD"
+WBMundo$CC.y[15] <- "SDN"
+WBMundo$CC.y[17] <- "HTI"
+WBMundo$CC.y[18] <- "DOM"
+WBMundo$CC.y[19] <- "RUS"
+WBMundo$CC.y[21] <- "MDV"
+WBMundo$CC.y[22] <- "NOR"
+WBMundo$CC.y[23] <- "GRL"
+WBMundo$CC.y[26] <- "ZAF"
+WBMundo$CC.y[28] <- "MEX"
+WBMundo$CC.y[30] <- "BRA"
+WBMundo$CC.y[32] <- "PER"
+WBMundo$CC.y[34] <- "PAN"
+WBMundo$CC.y[40] <- "BLZ"
+WBMundo$CC.y[44] <- "FRA"
+WBMundo$CC.y[53] <- "MLI"
+WBMundo$CC.y[56] <- "NG"
+WBMundo$CC.y[58] <- "CMR"
+WBMundo$CC.y[65] <- "SLE"
+WBMundo$CC.y[67] <- "CAF"
+WBMundo$CC.y[68] <- "COG"
+WBMundo$CC.y[69]<- "GAB"
+WBMundo$CC.y[70] <- "GIN"
+WBMundo$CC.y[74] <- "SWZ"
+WBMundo$CC.y[78] <- "LBN"
+WBMundo$CC.y[81] <- "GMB"
+WBMundo$CC.y[84] <- "JOR"
+WBMundo$CC.y[85] <- "ARE"
+WBMundo$CC.y[91] <- "KHM"
+WBMundo$CC.y[92] <- "THA"
+WBMundo$CC.y[95] <- "VNM"
+WBMundo$CC.y[97] <- "KOR"
+WBMundo$CC.y[96] <- "PRK"
+WBMundo$CC.y[103] <- "PAK"
+WBMundo$CC.y[104] <- "AFG"
+WBMundo$CC.y[105] <- "TJK"
+WBMundo$CC.y[106] <- "KGZ"
+WBMundo$CC.y[107] <- "TKM"
+WBMundo$CC.y[108] <- "IRN"
+WBMundo$CC.y[109] <- "SYR"
+WBMundo$CC.y[111] <- "SWE"
+WBMundo$CC.y[112] <- "BLR"
+WBMundo$CC.y[113] <- "UKR"
+WBMundo$CC.y[114] <- "POL"
+WBMundo$CC.y[116] <- "HUN"
+WBMundo$CC.y[120] <- "LVA"
+WBMundo$CC.y[122] <- "DEU"
+WBMundo$CC.y[124] <- "GRC"
+WBMundo$CC.y[125] <- "TUR"
+WBMundo$CC.y[127] <- "HRV"
+WBMundo$CC.y[128] <- "CHE"
+WBMundo$CC.y[129] <- "LUX"
+WBMundo$CC.y[130] <- "BEL"
+WBMundo$CC.y[131] <- "NLD"
+WBMundo$CC.y[133] <- "ESP"
+WBMundo$CC.y[134] <- "IRL"
+WBMundo$CC.y[135] <- "NCL"
+WBMundo$CC.y[142] <- "ITA"
+WBMundo$CC.y[143] <- "DNK"
+WBMundo$CC.y[144] <- "GBR"
+WBMundo$CC.y[145] <- "ISL"
+WBMundo$CC.y[148] <- "PHL"
+WBMundo$CC.y[149] <- "MYS"
+WBMundo$CC.y[151] <- "SVN"
+WBMundo$CC.y[152] <- "FIN"
+WBMundo$CC.y[153] <- "SVK"
+WBMundo$CC.y[154] <- "CZE"
+WBMundo$CC.y[156] <- "JPN"
+WBMundo$CC.y[158] <- "YEM"
+WBMundo$CC.y[159] <- "SAU"
+WBMundo$CC.y[162] <- "CYP"
+WBMundo$CC.y[163] <- "MAR"
+WBMundo$CC.y[164] <- "EGY"
+WBMundo$CC.y[165] <- "LBY"
+WBMundo$CC.y[166] <- "ETH"
+WBMundo$CC.y[168] <- "SOM"
+WBMundo$CC.y[171] <- "BIH"
+WBMundo$CC.y[172] <- "MKD"
+WBMundo$CC.y[176] <- "TTO"
+WBMundo$CC.y[177] <- "SSD"
+WBMundo$CC.y[137] <- "NZL"
+WBMundo$CC.y[83] <- "DZA"
+	
+
+
+WBMundo<-WBMundo%>%
+  select(CN, CC.y, CC.x)%>%
+  rename(CC=CC.y)%>%
+  left_join(Pop_Data, by="CC")%>%
+  mutate(Crecimiento=(`2019`-`1960`)/`1960`)
+
+
+
+```
+
+```{r}
+legend_title="Δ% (1960-2019)"
+breaks = c(0,2,5,10, 15, 20, 25, 30)
+
+Crecmap= tm_shape(WBMundo)+ tm_polygons("Crecimiento", title= legend_title, palette = "BuPu", showNA = FALSE) + tm_layout(bg.color = "lightblue", saturation = 1, legend.text.color = "Black", title = "", main.title = "Percentage Change in the Urban Population: From 1960 to 2019", legend.position= c("left", "bottom") , title.color = "Green", title.position = c("center", "bottom"), legend.text.size = .5,  title.size = 1, main.title.position = c("center", "top"))
+
+
+#tmap_arrange(WBMundo$`1960`, WBMundo$`2019`, Crecmap)
+
+```
+
+```{r}
+Crecmap
+```
+
+```{r}
+urb_1970_2030 = urban_agglomerations %>% 
+  filter(year %in% c(2010))
+
+ejemplo<- tm_shape(WBMundo)+ tm_polygons("Crecimiento", title= legend_title, palette = "BuPu", showNA = FALSE, breaks=breaks) + tm_layout(bg.color = "lightblue", saturation = 1, legend.text.color = "Black", title = "", main.title = "Percentage Change in the Urban Population: From 1960 to 2019", legend.position= c("left", "bottom") , title.color = "Green", title.position = c("center", "bottom"), legend.text.size = .5,  title.size = 1, main.title.position = c("center", "top")) +   tm_shape(urb_1970_2030) +  tm_symbols(col = "black", border.col = "white", size = "population_millions") 
+
+#  tm_facets(by = "year", nrow = 2, free.coords = FALSE)
+
+ejemplo
+
+```
+
