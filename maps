@@ -1,0 +1,427 @@
+library(sf)
+library(raster)
+library(ggplot2)
+library(tidyverse)
+library(tmap)    # for static and interactive maps
+library(leaflet) # for interactive maps
+```
+
+```{r}
+library(spData)
+#devtools::install_github("Nowosad/spDataLarge")
+```
+```{r}
+#library(spDataLarge)
+```
+
+```{r}
+#vignette(package = "sf")
+vignette("sf1")
+```
+
+```{r}
+names(worldbank_df)
+```
+
+```{r}
+mundo<- world
+```
+
+```{r}
+names(world)
+
+datas<- dataset%>%
+  rename(namec=`Country Name`)
+
+Mundo<- world %>%
+  dplyr::select(name_long, iso_a2)%>%
+  select(name_long, iso_a2)%>%
+  rename(code=iso_a2)%>%
+  rename(namec=name_long)%>%
+  left_join(datas)%>%
+  as.data.frame()%>%
+  select(namec, code, Country Code)
+
+write.csv(Mundo, "Mundo.csv")
+ 
+```
+
+```{r}
+library(sp)
+world_sp=as(world, Class= "Spatial")
+world_sf= st_as_sf(world_sp)
+```
+
+```{r}
+AF = world %>%
+  filter(continent == "Africa")%>%
+  dplyr::select(name_long)
+
+AF$name_long
+
+
+```
+
+
+
+```{r}
+EAC = world %>%
+  filter(continent == "Africa") %>%
+  filter(name_long %in% c("South Sudan", "Tanzania"))%>%
+  mutate(Regionec="EAC")%>%
+  dplyr::select(name_long, Regionec)
+
+world8 = world %>%
+  filter(continent == "Africa") %>%
+  dplyr::select(subregion)
+
+Comesa = world%>%
+  filter(continent == "Africa")%>%
+  filter(name_long %in% c("Republic of the Congo", "Djibouti", "Egypt", "Eritrea", "Ethiopia", "Libya", "Madagascar", "Malawi", "Mauritania", "Sudan", "Zambia", "Zimbabwe", "eSwatini", "Tunisia"))%>%
+  mutate(Regionec="COMESA")%>%
+  dplyr::select(name_long, Regionec)
+
+Comeac=  world%>%
+  filter(continent == "Africa")%>%
+  filter(name_long %in% c("Burundi", "Kenya", "Rwanda", "Uganda"))%>%
+  mutate(Regionec="EAC&COMESA")%>%
+  dplyr::select(name_long, Regionec)
+
+Mapaec<- rbind(Comeac, Comesa, EAC)
+
+
+#plot(world8[0], reset = FALSE)
+#plot(st_geometry(EAC), add = TRUE, col = "Blue", expandBB = c(0, 0.2, 0.1, 1), lwd = 2)
+
+
+```
+```{r}
+africa<-(world8[0])
+plot(africa)
+
+```
+
+
+
+
+```{r}
+
+legend_title3 = expression("Economic Regions")
+Finalmap= africa + tm_shape(Mapaec)+ tm_fill("Regionec", title= legend_title3, palette = "viridis") + tm_layout(bg.color = "lightblue", saturation = 1, legend.text.color = "Black", main.title = "East African Community & COMESA", title.color = "Black", main.title.position = c("center", "top"),  title.fontface = 1, main.title.size = 1.2)
+
+Finalmap
+```
+```{r}
+EACGDP<- dataset%>%
+  filter(Time=="2017")%>%
+  filter(name_long %in% c("Burundi", "Kenya", "Rwanda", "Uganda", "South Sudan", "Tanzania"))
+
+Mapaecgdp<- Mapaec%>%
+  left_join(EACGDP, by= c("name_long", "Regionec"))%>%
+  filter(name_long %in% c("Burundi", "Kenya", "Uganda", "South Sudan", "Tanzania", "Rwanda"))
+
+legend_title5 = expression("GDP PC")
+
+GDPmap= tm_shape(africa) + tm_polygons() 
+
+
+
+GDPmap1= tm_shape(Mapaecgdp)+ tm_fill("GDP per capita (constant 2010 US$)", title= legend_title5, palette = "Reds", showNA = FALSE) + tm_layout(bg.color = "lightblue", saturation = 1, legend.text.color = "Black", title = "", main.title = "GDP Per Capita (constant 2010 US$)", title.color = "Black", title.position = c("center", "top"),  title.size =1, main.title.size = 1.05, main.title.position = c("center", "top"), legend.position = c("left", "bottom")) + tm_shape(EAC)+ tm_borders("Black", lwd = 2, lty = "solid", alpha = NA) + tm_shape(EAC)+ tm_borders("Darkred", lwd = 1, lty = "solid", alpha = NA) + tm_shape(Comeac)+ tm_borders("Darkred", lwd =2 , lty = "solid", alpha = NA) + tm_text("name_long")
+
+
+
+GDPmap1
+  
+```
+```{r}
+
+
+Mapaecir<- Mapaec%>%
+  left_join(InterestRate, by= c("name_long"))%>%
+   filter(name_long %in% c("Burundi", "Kenya", "Uganda", "South Sudan", "Tanzania", "Rwanda"))
+
+legend_title6 = expression("Interest Rate")
+
+IRmap= tm_shape(Mapaecir)+ tm_polygons("Real Interest Rate 2018", title= legend_title6, palette = "Greens", showNA = FALSE) + tm_layout(bg.color = "lightblue", saturation = 1, legend.text.color = "Black", title = "", main.title = "Real Interest Rate 2018", legend.position= c("left", "bottom") , title.color = "Black", title.position = c("center", "bottom"), legend.text.size = .5,  title.size = 1, main.title.position = c("center", "top")) + tm_shape(EAC)+ tm_borders("Black", lwd = 2, lty = "solid", alpha = NA) + tm_shape(EAC)+ tm_borders("Darkgreen", lwd = 1, lty = "solid", alpha = NA) + tm_shape(Comeac)+ tm_borders("Darkgreen", lwd =2 , lty = "solid", alpha = NA) + tm_text("name_long")
+
+
+IRmap
+
+```
+
+
+```{r}
+
+Mapainfl<- Mapaec%>%
+  left_join(Inflation_Rate, by= c("name_long"))%>%
+  filter(name_long %in% c("Burundi", "Kenya", "Uganda", "South Sudan", "Tanzania", "Rwanda")) 
+
+legend_title6 = expression("Inflation 2019")
+
+Infmap= tm_shape(Mapainfl)+ tm_polygons("2017 [YR2017]", title= legend_title6, palette = "Blues", showNA = FALSE) + tm_layout(bg.color = "lightblue", saturation = 1, legend.text.color = "Black", title = "", main.title = "Inflation 2019", title.color = "Black", title.position = c("center", "top"),  title.size = 1, main.title.position = c("center", "top")) + tm_shape(EAC)+ tm_borders("Blue", lwd = 2, lty = "solid", alpha = NA) + tm_shape(EAC)+ tm_borders("Blue", lwd = 1, lty = "solid", alpha = NA) + tm_shape(Comeac)+ tm_borders("Purple", lwd =2 , lty = "solid", alpha = NA) + tm_text("name_long")
+
+Infmap
+
+
+
+```
+
+
+
+```{r}
+library(shiny)
+library(methods)
+library(venn)
+library(QCA)
+
+#x <- rnorm(n = 100, mean = 175, sd = 10)
+
+#cx <- calibrate(x, thresholds = "e=165, c=175, i=185")
+#plot(x, cx, main = "Membership scores in the set of tall people",
+#xlab = "Raw data", ylab = "Calibrated data")
+
+#cx
+
+
+```
+
+
+
+
+
+```{r}
+
+mapaecon= Eacomemap + tm_layout(bg.color = "lightblue", saturation = 1, legend.text.color = "Black", title = "East African Community & COMESA", title.color = "Black", title.position = c("center", "top"),  title.fontface = 2)
+
+```
+
+
+
+```{r}
+#st_centroid() ##Esta función convierte un tipo de geometría polígonos en otro puntos. 
+plot(world["continent"], reset= FALSE)
+cex= sqrt(world$pop) / 10000
+world_cents = st_centroid(world, of_largest = TRUE) ### Esta base contiene coordenadas
+plot(st_geometry(world_cents), add= TRUE, cex = cex)
+
+```
+
+
+```{r}
+Africas = world[world$subregion == "", ]
+
+plot(st_geometry(Africas), 
+     expandBB = c(0, .2, .1, 1),  
+     col= "gray", lwd = 3)
+
+#plot(world_asia[0], add= TRUE)
+```
+```{r}
+vignette("functions", package = "raster")
+
+```
+
+```{r}
+raster_filepath= system.file("raster/srtm.tif", package = "spDataLarge")
+```
+
+```{r}
+new_raster= brick(raster_filepath)
+new_raster
+```
+
+```{r}
+plot(new_raster)
+nlayers(new_raster)
+```
+
+```{r}
+
+#Mapaecgdp<- Mapaec%>%
+ # left_join(EACGDP, by= c("name_long", "Regionec"))
+
+
+Mapaton<- Mapaec%>%
+  left_join(dataset)%>%
+  gather(YR, Val, `1990 [YR1990]`:`2019 [YR2019]`, factor_key=TRUE)%>%
+  mutate(YRT=str_extract(YR, "\\d{4}"))%>%
+  mutate(YRT= as.numeric(YRT))%>%
+  filter(YRT>2012)
+
+GDPgrowth<- Mapaton%>%
+  dplyr::select(name_long:YRT)%>%
+  as.data.frame()%>%
+  filter(`Series Code`== "TM.TAX.MRCH.SM.AR.ZS")%>%
+  filter(Val!= "NA")%>%
+  filter(Val!="..")%>%
+  select(name_long:YRT)
+
+GDP<- GDPgrowth%>%
+  mutate(Regionec = gsub("EAC&COMESA","EAC", Regionec))%>%
+ #rbind(GDPgrowth)%>%
+  #distinct()%>%
+  mutate(Val=as.numeric(Val))
+ # filter(name_long!="Djibouti")
+
+ggplot(data=Intento, aes(x=Intento$Regionec, y=Intento$Val)) + geom_boxplot(aes(x=Intento$Regionec, y=Intento$Val), na.rm = FALSE) + ggtitle("Tariff rate", subtitle = "Simple mean, all products (%)") + geom_point(aes(x=Intento$Regionec, y=Intento$Val, colour=Intento$name_long)) + scale_colour_discrete("Members") + facet_wrap(~YRT,) + geom_text(aes(label=ifelse(Intento$Val>12,as.character(Intento$name_long),'')),hjust=0,vjust=0, size=2) + ylab("Tarif Rate") + xlab("Region" ) +labs(caption = "Data Source:https://data.worldbank.org") 
+#+ theme(axis.text.x=element_text(angle=-90, size=8, hjust = .5))
+  
+  
+  #group_by(Regionec, YRT)%>%
+  #summarise(deviation=sd(Val))
+
+  # library(ggridges)                             
+
+##ggplot(data=GDPgrowth, aes(x=GDPgrowth$deviation, y=GDPgrowth$Regionec, fill=..x..))+
+#  geom_density_ridges_gradient(gradient_lwd = 0.5, fill="#ff864e") +
+ # geom_vline(xintercept = 0, linetype="dotted") + facet_wrap(~ GDPgrowth$YRT, scales = "free")
+
+#ggtitle("Distribución de las emociones de los usuarios")
+
+#ggplot(data=GDPgrowth, aes(x=GDPgrowth$Val, y=GDPgrowth$YRT))+ geom_line()
+
+
+#  geom_density_ridges_gradient(gradient_lwd = 0.5, fill="#ff864e") +
+ # geom_vline(xintercept = 0, linetype="dotted") + facet_wrap(~ GDPgrowth$YRT, scales = "free")
+
+
+#+ facet_wrap(~ GDPgrowth$YRT, scales = "free") 
+
+#geom_point(aes(colour = GDPgrowth$Regionec), size = 4)
+
+#mutate(gradebook, letter = ifelse(grade %in% 60:69, "D",
+  #                                   ifelse(grade %in% 70:79, "C",
+ #                                           ifelse(grade %in% 80:89, "B",
+   #                                                ifelse(grade %in% 90:99, "A", "F")))))
+  
+
+
+  
+```
+```{r}
+ggplot(data=GDPgrowth, aes(x=Intento$Regionec, y=Intento$Val)) + geom_boxplot(aes(x=Intento$Regionec, y=Intento$Val), na.rm = FALSE) + ggtitle("Importance of Trade in the Region", subtitle = "Trade as % of GDP") + geom_point(aes(x=Intento$Regionec, y=Intento$Val, colour=Intento$name_long)) + scale_colour_discrete("Members") + facet_wrap(~YRT, scales = "free_y") + geom_text(aes(label=ifelse(Intento$Val>50,as.character(Intento$name_long),'')),hjust=0,vjust=0, size=2) + ylab("% of GDP") + xlab("Region" ) +labs(caption = "Data Source:https://data.worldbank.org/indicator")
+```
+
+```{r}
+gdp<- dataset%>%
+  filter(name_long %in% c("Burundi", "Kenya", "Rwanda", "Uganda", "South Sudan", "Tanzania"))
+  
+  
+#ifelse(name_long=="Rwanda", mutate(Regionec=gsub("COMESA","EAC", Regionec)),'')
+  #rbind(dataset)%>%
+  #mutate(Regionec=gsub("EAC&COMESA","COMESA", Regionec))%>%
+  #distinct()
+  
+
+ggplot(data=gdp, aes(x=gdp$Time, y=gdp$`GDP per capita (constant 2010 US$)`)) + geom_boxplot(aes(x=gdp$Time, y=gdp$`GDP per capita (constant 2010 US$)`)) + geom_point(aes(x=gdp$Time, y=gdp$`GDP per capita (constant 2010 US$)`, colour=gdp$name_long))+ ggtitle("GDP PerCapita", subtitle = "Constant 2010 $US") + scale_colour_discrete("EAC Members")  + ylab("Gdp per Capita") + xlab("YEAR" ) +labs(caption = "Data Source:https://data.worldbank.org") + geom_text(size=3, aes(label=ifelse(gdp$Time==2010, as.character(gdp$name_long),ifelse(gdp$`GDP per capita (constant 2010 US$)`<750 & gdp$Time==2018,as.character(gdp$name_long),'')),hjust=0,vjust=0)) + theme(text = element_text(size = 10))
+  
+  
+  #mutate(gradebook, department = ifelse(grepl("MATH", section), "Math Department",
+  
+```
+
+```{r}
+  Mapaton<- Mapaec%>%
+  left_join(dataafrica)
+#  filter(name_long %in% c("Burundi", "Kenya", "Rwanda", "Uganda", "South Sudan", "Tanzania"))
+  
+ 
+Tariffs<- Mapaton%>%
+  filter(`Series Name`=="Current account balance (BoP, current US$)")%>%
+  rename(value8=`2018 [YR2018]`)%>%
+  filter(value8!="NA")
+#filter(YR=="2018 [YR2018]")%>%
+  #filter(Val!="NA")
+
+
+
+legend_title6 = expression("Current account balance")
+
+Tariffmap= tm_shape(africa) + tm_polygons() + tm_shape(Tariffs) + tm_polygons("value8", title= legend_title6, palette = "Blues", showNA = FALSE) + tm_shape(EAC)+ tm_borders("Darkblue", lwd = 2, lty = "solid", alpha = NA) + tm_shape(EAC)+ tm_borders("Darkblue", lwd = 1, lty = "solid", alpha = NA) + tm_shape(Comeac)+ tm_borders("Darkblue", lwd =2 , lty = "solid", alpha = NA) + tm_layout(bg.color = "lightblue", saturation = 1, legend.text.color = "Black", title = "2018, current US$", main.title = "Current account balance", title.color = "Black", title.position = c("center", "top"),  title.size = 1, main.title.position = c("center", "top")) 
+
+
+#tm_shape(EAC)+ tm_borders("Blue", lwd = 2, lty = "solid", alpha = NA) + tm_shape(EAC)+ tm_borders("Blue", lwd = 1, lty = "solid", alpha = NA) + tm_shape(Comeac)+ tm_borders("Purple", lwd =2 , lty = "solid", alpha = NA)
+
+
+
+
+#ggplot(data=, aes(x=gdp$`Time Code`, y=gdp$`GDP per capita (constant 2010 US$)`)) + geom_boxplot(aes(x=gdp$`Time Code`, y=gdp$`GDP per capita (constant 2010 US$)`)) + geom_point(aes(x=gdp$`Time Code`, y=gdp$`GDP per capita (constant 2010 US$)`, colour=gdp$name_long))+ ggtitle("GDP PerCapita", subtitle = "Constant 2010 $US") + scale_colour_discrete("EAC Members")  + ylab("Gdppp") + xlab("YEAR" ) +labs(caption = "Data Source:https://data.worldbank.org") 
+
+
+ 
+```
+
+```{r}
+Tariffmap
+```
+
+
+
+```{r}
+africadata<- dataafrica%>%
+  gather(YR, Val, `1990 [YR1990]`:`2019 [YR2019]`, factor_key=TRUE)%>%
+  mutate(YRT=str_extract(YR, "\\d{4}"))%>%
+  mutate(YRT= as.numeric(YRT))%>%
+  filter(name_long %in% c("Burundi", "Kenya", "Rwanda", "Uganda", "South Sudan", "Tanzania"))
+
+tradebp<- africadata%>%
+  filter(`Series Code`=="NE.TRD.GNFS.ZS")%>%
+  filter(Val!="NA")
+ 
+CA<- africadata%>%
+  filter(`Series Name`=="Current account balance (BoP, current US$)")%>%
+  filter(Val!="NA") 
+
+ggplot(data= CA, aes(x=CA$YR, y=CA$Val)) + geom_boxplot(aes(x=CA$YR, y=CA$Val)) + geom_point(aes(x=CA$YR, y=CA$Val, colour=CA$name_long)) + ggtitle("Current account balance", subtitle = "(BoP, current US$)") + scale_colour_discrete("EAC Members")  + ylab("Negative Billions Dolars") + xlab("YEAR" ) +labs(caption = "Data Source:https://data.worldbank.org") + theme(title = element_text(hjust=.5), axis.text.x=element_text(angle=-90, size=7, hjust = .5))
+ 
+```
+
+```{r}
+tarifrate<- africadata%>%
+  filter(`Series Name`=="Tariff rate, applied, simple mean, all products (%)")%>%
+  filter(Val!="NA")%>%
+  mutate(YR=str_extract(YR, "\\d{4}"))%>%
+  mutate(YRT= as.character(YRT))
+
+ggplot(data= tarifrate, aes(x=tarifrate$YR, y=tarifrate$Val)) + geom_boxplot(aes(x=tarifrate$YR, y=tarifrate$Val)) + geom_point(aes(x=tarifrate$YR, y=tarifrate$Val, colour=tarifrate$name_long)) + ggtitle("Tariff Rate", subtitle = "Import quota and tariff") + scale_colour_discrete("EAC Members")  + ylab("(% simple mean)") + xlab("YEAR" ) +labs(caption = "Data Source:https://data.worldbank.org") + theme(title = element_text(hjust=.5), axis.text.x=element_text(size=7, hjust = .5)) + geom_text(size=3, aes(label=ifelse(tarifrate$YR=="2000", as.character(tarifrate$name_long),'')), hjust=0,vjust=0, size=2)
+
+
+#size=3, aes(label=ifelse(gdp$Time==2010, as.character(gdp$name_long),ifelse(gdp$`GDP per capita (constant 2010 US$)`<750 & gdp$Time==2018,as.character(gdp$name_long),'')),hjust=0,vjust=0))
+
+```
+
+```{r}
+ir<- vm%>%
+  rename(Burundi=`Burundi [BDI]`)%>%
+  rename(Kenya=`Kenya [KEN]`)%>%
+  rename(Rwanda=`Rwanda [RWA]`)%>%
+  rename(`South Sudan`= `South Sudan [SSD]`)%>%
+  rename(Uganda=`Uganda [UGA]`)%>%
+  rename(Tanzania=`Tanzania [TZA]`)%>%
+  gather(Country, Val, Burundi:Uganda, factor_key=TRUE)%>%
+  filter(`Series Name`== 	"Net financial flows, bilateral (NFL, current US$)")%>%
+  filter(Val!="NA")
+  #mutate(YRT=str_extract(YR, "\\d{4}"))
+  #mutate(YRT= as.numeric(YRT))%>%
+ # filter(name_long %in% c("Burundi", "Kenya", "Rwanda", "Uganda", "South Sudan", "Tanzania"))
+
+ggplot(data= ir, aes(x=ir$Time, y=ir$Val)) + geom_boxplot(aes(x=ir$Time, y=ir$Val)) + geom_point(aes(x=ir$Time, y=ir$Val, colour=ir$Country)) + ggtitle("Financial Integrations", subtitle = "Net Financial Flows") + scale_colour_discrete("EAC Members")  + ylab("($)") + xlab("YEAR" ) +labs(caption = "Data Source:https://data.worldbank.org") + theme(title = element_text(hjust=.5), axis.text.x=element_text(size=7, hjust = .5)) + geom_text(aes(label=ifelse(ir$Val>20,as.character(ir$Country),'')),size=2) 
+  
+```
+
+```{r}
+Inflr<- Inflation_Rate%>%
+  gather(YR, Val, `2016 [YR2016]`:`Inflation 2019`, factor_key=TRUE)%>%
+  filter(name_long %in% c("Burundi", "Kenya", "Rwanda", "Uganda", "South Sudan", "Tanzania"))%>%
+  filter(Val!="NA")%>%
+  mutate(YR=str_extract(YR, "\\d{4}"))
+  
+
+ggplot(data= Inflr, aes(x=Inflr$YR, y=Inflr$Val)) + geom_boxplot(aes(x=Inflr$YR, y=Inflr$Val)) + geom_point(aes(x=Inflr$YR, y=Inflr$Val, colour=Inflr$name_long)) + ggtitle("Monetary Integration", subtitle = "Inflation Rate") + scale_colour_discrete("EAC Members")  + ylab("(%)") + xlab("YEAR" ) +labs(caption = "Data Source:https://data.worldbank.org") + theme(title = element_text(hjust=.5), axis.text.x=element_text(size=7, hjust = .5)) + geom_text(aes(label=ifelse(Inflr$Val>50,as.character(Inflr$name_long),'')),size=2) + scale_y_discrete(breaks=c(0,2,4,6,8,10,300,400))
+#scale_y_continuous(limits = quantile(Inflr$Val, c(0.8, 1)))
+#+ geom_text(aes(label=ifelse(ir$Val>20,as.character(ir$Country),'')),size=2) 
+
+is.numeric(Inflr$Val)
+
+```
+
