@@ -1,0 +1,188 @@
+---
+title: "Mapa"
+author: "quetzalli"
+date: "10/11/2021"
+output: html_document
+---
+
+
+
+
+```{r}
+library(sf)
+library(raster)
+library(ggplot2)
+library(tidyverse)
+library(tmap)    # for static and interactive maps
+library(leaflet) # for interactive maps
+library(spData)
+```
+
+```{r}
+#Abrirmapas
+mapamun <- st_read("muni_2018gw.shp")
+mapaest<- st_read("dest_2015gw.shp")
+names(mapaest)
+```
+
+```{r}
+#Revisarnombresdeentidades
+mapaest$NOM_ENT
+PRODEST$NOM_ENT
+
+```
+
+```{r}
+#Gather
+PRODEST1<- PRODEST%>%
+  gather(ANIO, Produccion, "2010":"2020", factor_key=TRUE)%>%
+  mutate(ANIO=as.character(ANIO))%>%
+  mutate(Produccion=as.numeric(Produccion))
+
+```
+
+```{r}
+#LEER ARCHIVOS
+mapamun <- st_read("muni_2018gw.shp")
+mapaest<- st_read("dest_2015gw.shp")%>%
+  select("NOM_ENT", "AREA", "PERIMETER", "COV_", "COV_ID", "geometry")
+
+names(mapaest)
+
+```
+```{r}
+#JUNTARARCHIVOS Y MAPEAR
+joinedest <-left_join(mapaest, PRODEST)%>%
+  select("NOM_ENT", "AREA", "PERIMETER", "COV_", "COV_ID", "geometry", "2020", "2018", "2016", "2014", "2012", "2010")
+  
+  
+current.mode <- tmap_mode("plot")
+
+
+ttm()
+
+mapa1est= tm_shape(joinedest)+ tm_polygons(col = c("2020", "2018", "2016", "2014",  "2012", "2010"), border.col = "Black", palette = "Reds", breaks= c(0,2000, 4000, 6000, 8000, 10000, 12000)) + tm_fill("2020", title="entidad", palette = "Reds", showNA = FALSE) + tm_layout(bg.color = "lightblue", saturation = 1, legend.text.color = "Black", title = "", legend.position= c("left", "bottom") , title.color = "Black", title.position = c("center", "bottom"), legend.text.size = .85,  title.size = 1.5, main.title.position = c("center", "top"))
+mapa1est
+
+#+ tm_layout(bg.color = "lightblue", saturation = 1, legend.text.color = "Black", title = "", legend.outside = TRUE, legend.outside.position = "bottom", title.color = "Black", title.position = c("center", "bottom"), legend.text.size = 5,  title.size = 5, main.title.position = c("center", "top")) 
+
+#+ tm_facets(by = "ANIO", nrow = 3, free.coords = FALSE, drop.NA.facets = TRUE)
+
+
+```
+
+```{r}
+tmap_save(mapa1est, "Producción de miel 2020.jpg")
+```
+
+
+```{r}
+#JUNTARARCHIVOS Y MAPEAR
+
+joinedest2011<- left_join(mapaest, PRODEST)%>%
+  select("NOM_ENT", "AREA", "PERIMETER", "COV_", "COV_ID", "geometry", "2011")%>%
+  mutate(Produccion=as.numeric("2011"))
+
+joinedest2012<- left_join(mapaest, PRODEST)%>%
+  select("NOM_ENT", "AREA", "PERIMETER", "COV_", "COV_ID", "geometry", "2012")%>%
+  mutate(Produccion=as.numeric("2012"))
+
+joinedest2013<- left_join(mapaest, PRODEST)%>%
+  select("NOM_ENT", "AREA", "PERIMETER", "COV_", "COV_ID", "geometry", "2013")%>%
+  mutate(Produccion=as.numeric("2013"))
+
+joinedest2014<- left_join(mapaest, PRODEST)%>%
+  select("NOM_ENT", "AREA", "PERIMETER", "COV_", "COV_ID", "geometry", "2014")%>%
+  mutate(Produccion=as.numeric("2014"))
+
+joinedest2015<- left_join(mapaest, PRODEST)%>%
+  select("NOM_ENT", "AREA", "PERIMETER", "COV_", "COV_ID", "geometry", "2015")%>%
+  mutate(Produccion=as.numeric("2015"))
+
+joinedest2016<- left_join(mapaest, PRODEST)%>%
+  select("NOM_ENT", "AREA", "PERIMETER", "COV_", "COV_ID", "geometry", "2016")%>%
+  mutate(Produccion=as.numeric("2015"))
+
+joinedest2017<- left_join(mapaest, PRODEST)%>%
+  select("NOM_ENT", "AREA", "PERIMETER", "COV_", "COV_ID", "geometry", "2017")%>%
+  mutate(Produccion=as.numeric("2017"))
+
+joinedest2018<- left_join(mapaest, PRODEST)%>%
+  select("NOM_ENT", "AREA", "PERIMETER", "COV_", "COV_ID", "geometry", "2018")%>%
+  mutate(Produccion=as.numeric("2018"))
+
+joinedest2019<- left_join(mapaest, PRODEST)%>%
+  select("NOM_ENT", "AREA", "PERIMETER", "COV_", "COV_ID", "geometry", "2019")%>%
+  mutate(Produccion=as.numeric("2019"))
+
+joinedest2020<- left_join(mapaest, PRODEST)%>%
+  select("NOM_ENT", "AREA", "PERIMETER", "COV_", "COV_ID", "geometry", "2020")%>%
+  mutate(Produccion=as.numeric("2020"))
+```
+
+
+```{r}
+
+library(gifski)
+
+opts <- tmap_options(basemaps = NULL)
+
+# restore options
+tmap_options(opts)
+# restore current mode
+tmap_mode(current.mode)
+
+
+ttm()
+
+miel2011 = tm_shape(joinedest2011) + tm_polygons(col = c("2011"), palette = "Reds", breaks= c(0, 2000, 4000, 6000, 8000, 10000,12000), border.col = "Black") + tm_layout(bg.color = "#e2f9f0", main.title = "Producción de Miel", main.title.color = "#e03403", main.title.position = "right", legend.outside = TRUE)  
+tmap_save(miel2011, "miel2011.html")
+
+miel2012 = tm_shape(joinedest2012) + tm_polygons(col = c("2012"), palette = "Reds", breaks= c(0, 2000, 4000, 6000, 8000, 10000,12000), border.col = "Black") + tm_layout(bg.color = "#e2f9f0", main.title = "Producción de Miel", main.title.color = "#e03403", main.title.position = "right", legend.outside = TRUE)  
+tmap_save(miel2012, "miel2012.html")
+
+miel2013 = tm_shape(joinedest2013) + tm_polygons(col = c("2013"), palette = "Reds", breaks= c(0, 2000, 4000, 6000, 8000, 10000,12000), border.col = "Black") + tm_layout(bg.color = "#e2f9f0", main.title = "Producción de Miel", main.title.color = "#e03403", main.title.position = "right", legend.outside = TRUE)  
+tmap_save(miel2013, "miel2013.html")
+
+miel2014 = tm_shape(joinedest2014) + tm_polygons(col = c("2014"), palette = "Reds", breaks= c(0, 2000, 4000, 6000, 8000, 10000,12000), border.col = "Black") + tm_layout(bg.color = "#e2f9f0", main.title = "Producción de Miel", main.title.color = "#e03403", main.title.position = "right", legend.outside = TRUE)  
+tmap_save(miel2014, "miel2014.html")
+
+miel2015 = tm_shape(joinedest2015) + tm_polygons(col = c("2015"), palette = "Reds", breaks= c(0, 2000, 4000, 6000, 8000, 10000,12000), border.col = "Black") + tm_layout(bg.color = "#e2f9f0", main.title = "Producción de Miel", main.title.color = "#e03403", main.title.position = "right", legend.outside = TRUE)  
+tmap_save(miel2015, "miel2015.html")
+
+miel2016 = tm_shape(joinedest2016) + tm_polygons(col = c("2016"), palette = "Reds", breaks= c(0, 2000, 4000, 6000, 8000, 10000,12000), border.col = "Black") + tm_layout(bg.color = "#e2f9f0", main.title = "Producción de Miel", main.title.color = "#e03403", main.title.position = "right", legend.outside = TRUE)  
+tmap_save(miel2016, "miel2016.html")
+
+miel2017 = tm_shape(joinedest2017) + tm_polygons(col = c("2017"), palette = "Reds", breaks= c(0, 2000, 4000, 6000, 8000, 10000,12000), border.col = "Black") + tm_layout(bg.color = "#e2f9f0", main.title = "Producción de Miel", main.title.color = "#e03403", main.title.position = "right", legend.outside = TRUE)  
+tmap_save(miel2017, "miel2017.html")
+
+miel2018 = tm_shape(joinedest2018) + tm_polygons(col = c("2018"), palette = "Reds", breaks= c(0, 2000, 4000, 6000, 8000, 10000,12000), border.col = "Black") + tm_layout(bg.color = "#e2f9f0", main.title = "Producción de Miel", main.title.color = "#e03403", main.title.position = "right", legend.outside = TRUE)  
+
+
+#mielgif1<-tmap_animation(miel, filename = "miel.gif", delay = 80)
+
+```
+
+```{r}
+miel2018 = tm_shape(joinedest2018) + tm_polygons(col = c("2018"), palette = "Reds", breaks= c(0, 2000, 4000, 6000, 8000, 10000,12000), border.col = "Black") + tm_layout(bg.color = "#e2f9f0", main.title = "Producción de Miel", main.title.color = "#e03403", main.title.position = "right", legend.outside = TRUE)  
+tmap_save(miel2018, "miel2018.html")
+
+miel2019 = tm_shape(joinedest2019) + tm_polygons(col = c("2019"), palette = "Reds", breaks= c(0, 2000, 4000, 6000, 8000, 10000,12000), border.col = "Black") + tm_layout(bg.color = "#e2f9f0", main.title = "Producción de Miel", main.title.color = "#e03403", main.title.position = "right", legend.outside = TRUE)  
+tmap_save(miel2019, "miel2019.html")
+
+miel2020 = tm_shape(joinedest2020) + tm_polygons(col = c("2020"), palette = "Reds", breaks= c(0, 2000, 4000, 6000, 8000, 10000,12000), border.col = "Black") + tm_layout(bg.color = "#e2f9f0", main.title = "Producción de Miel", main.title.color = "#e03403", main.title.position = "right", legend.outside = TRUE)  
+tmap_save(miel2020, "miel2020.html")
+```
+
+
+
+
+```{r}
+
+tmap_save(miel, "miel.jpg")
+class(miel)
+
+```
+
+```{r}
+save_widget
