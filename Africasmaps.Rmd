@@ -1,0 +1,311 @@
+---
+title: "Africasmaps"
+author: "quetzalli"
+date: "18/4/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(sf)
+library(raster)
+library(ggplot2)
+library(tidyverse)
+library(tmap)    # for static and interactive maps
+library(leaflet) # for interactive maps
+library(spData)
+vignette("sf1")
+library(sp)
+library(haven)
+library(lubridate)
+```
+
+
+```{r}
+head(read_dta("LwCAfrica_R1_R12_rv2.dta"))
+```
+
+
+#abrir y limpiar base de datos en stata
+```{r}
+
+
+Covid<- read_dta("LwCAfrica_R1_R12_rv2.dta")%>%
+  select(country, a02_region, province, district_id, idno, DMSCoordinates, Latitude, Longitude, q2a4a, q2a4b, q2a4c, q2a4d, q2a4e, q2a4f, q2a1, q2a3, q2a2, q2a2x, startTime, endTime, starttime, endtime, a06_doi)%>%
+  mutate(dates=month(startTime))%>%
+  mutate(dates1=month(starttime))%>%
+  mutate(dates2= month(a06_doi))%>%
+  #mutate(dates2= if_else(is.na(dates), dates1, dates))%>%
+  mutate(Had_COVID= if_else(q2a1==1, 1, 0))%>%
+  mutate(Died_COVID= if_else(q2a3==1, 1, 0))%>%
+  mutate(Met_COVID= if_else(q2a2==1, 1, 0))%>%
+  mutate(Incidence= if_else(q2a2x==1, 1, 0))%>%
+  mutate(Hyg_wash_hands= if_else(q2a4a!=1, 0, 1))%>%
+   mutate(Hyg_shk_hands= if_else(q2a4b!=1, 0, 1))%>%
+    mutate(A_soc_gath= if_else(q2a4c!=1, 0, 1))%>%
+     mutate(A_gath= if_else(q2a4d!=1, 0, 1))%>%
+       mutate(Hyg_Worn_mask= if_else(q2a4e!=1, 0, 1))%>%
+         mutate(A_publict= if_else(q2a4f!=1, 0, 1))%>%
+  mutate(Had_COVID= if_else(q2a1==1, 1, 0))%>%
+  mutate(Died_COVID= if_else(q2a3==1, 1, 0))%>%
+  mutate(Met_COVID= if_else(q2a2==1, 1, 0))%>%
+  mutate(Incidence= if_else(q2a2x==1, 1, 0))%>%
+  mutate(Exposure= Had_COVID + Died_COVID + Met_COVID + Incidence)%>%
+  mutate(cb_i_hygiene= Hyg_Worn_mask + Hyg_shk_hands + Hyg_wash_hands)%>%
+  mutate(cb_i_avoid=A_soc_gath + A_gath + A_publict)%>%
+  mutate(cb_i_full=cb_i_avoid+cb_i_hygiene)%>%
+  mutate(Period= if_else(dates2<4, "A. Jan.2021-Mar.2021", 
+                        if_else(dates2>=4 & dates2<8, "B. Apr.2021-Jun.2021", 
+                              if_else(dates2>=8 & dates2<10 , "C. Jul.2021-Sept.2021", "D. Oct.2021-Dec.2021"))))%>%
+  filter(!is.na(Period))%>%
+   mutate(unqid=1:24260)%>%
+  filter(!is.na(cb_i_hygiene| cb_i_avoid | cb_i_full))%>%
+  select(cb_i_avoid, cb_i_hygiene, cb_i_full, unqid, Period, Longitude, Latitude, Exposure, Had_COVID,   Died_COVID,  Met_COVID, Incidence)
+  
+  
+
+```
+
+
+```{r}
+Tanzones <- st_read("Lwc_A_zones.shp")
+Tandistricts<- st_read("Lwc_A_districts.shp")%>%
+  select(NAME_0, NAME_1, NAME_2)
+Afr<- st_read("afr_g2014_2013_0.shp")
+```
+
+
+```{r}
+#Create sf files
+Periods<- Covid%>%
+  filter(!is.na(cb_i_hygiene| cb_i_avoid | cb_i_full ))%>%
+  select(cb_i_avoid, cb_i_hygiene, cb_i_full, unqid, Period, Longitude, Latitude, Exposure, Had_COVID,   Died_COVID,  Met_COVID,    Incidence)%>%
+  st_as_sf(coords = c("Longitude", "Latitude"))
+
+#ASIGNAR MARCO DE REFERENCIA GEOESTADISTICO
+st_crs(Periods) <- 4326
+st_write(Periods, "Periods", driver = "ESRI Shapefile")
+
+```
+
+
+```{r}
+Periodos_maps<- st_read("Periods")
+```
+
+
+```{r}
+Periods_aea <- st_transform(Periodos_maps, st_crs(Tandistricts))
+st_write(Periods_aea, "Periods_aea", driver = "ESRI Shapefile")
+
+```
+
+
+
+```{r}
+Baseperiodos<- Tandistricts %>% 
+  st_join(Periods_aea)%>%
+  drop_na(unqid)%>%
+  drop_na(cb_i_vd)%>%
+  drop_na(cb__hyg)%>%
+#  group_by(NAME_2, NAME_0)%>%
+  st_drop_geometry()%>%
+  group_by(NAME_2, NAME_0, Period)%>%
+  summarise(Full=mean(cb__fll))
+  
+
+Covidbe<- Tandistricts %>% 
+  st_join(Periods_aea)%>%
+  drop_na(unqid)%>%
+  drop_na(cb_i_vd)%>%
+  drop_na(cb__hyg)%>%
+#  group_by(NAME_2, NAME_0)%>%
+  st_drop_geometry()%>%
+  group_by(NAME_2, NAME_0)%>%
+  summarise(C.Avoidance=mean(cb_i_vd), B.Hygiene= mean(cb__hyg), A.Full= mean(cb__fll))%>%
+ gather("Preguntas", "Average", A.Full, B.Hygiene, C.Avoidance)%>%
+  filter(!is.na(Average))
+
+Covidfull<- Tandistricts %>%
+  st_join(Periods_aea)%>%
+  drop_na(unqid)%>%
+  drop_na(cb_i_vd)%>%
+  drop_na(cb__hyg)%>%
+#  group_by(NAME_2, NAME_0)%>%
+  st_drop_geometry()%>%
+  group_by(NAME_2, NAME_0)%>%
+  summarise(Full=mean(cb__fll))
+  
+```
+
+
+
+```{r}
+Exposure<- Tandistricts%>%
+  st_join(Periods_aea)%>%
+  drop_na(unqid)%>%
+  drop_na(cb_i_vd)%>%
+  drop_na(cb__hyg)%>%
+  drop_na(Exposur)%>%
+  st_drop_geometry()%>%
+  group_by(NAME_2, NAME_0)%>%
+  summarise(Exposure=mean(Exposur))
+
+
+```
+
+
+
+```{r}
+Exposuremap<- Tandistricts%>%
+  left_join(Exposure)
+```
+
+```{r}
+Sierraperiodos<-Tandistricts%>%
+  filter(NAME_0=="Sierra Leone")%>%
+  left_join(Baseperiodos)
+
+SierraCovid<- Tandistricts%>%
+  filter(NAME_0=="Sierra Leone")%>%
+  left_join(Covidbe)
+
+Sierra1<-Tandistricts%>%
+  filter(NAME_0=="Sierra Leone")
+  
+Tanzaniaperiodos<-Tandistricts%>%
+  filter(NAME_0=="Tanzania")%>%
+   left_join(Baseperiodos)
+
+TanzaniaCovid<- Tandistricts%>%
+  filter(NAME_0=="Tanzania")%>%
+  left_join(Covidbe)
+
+Tanzania1<-Tandistricts%>%
+  filter(NAME_0=="Tanzania")
+
+Mozambiqueperiodos<-Tandistricts%>%
+  filter(NAME_0=="Mozambique")%>%
+  left_join(Baseperiodos%>% filter(NAME_0=="Mozambique"))%>%
+  drop_na(Period)
+  
+
+Mozambique1<-Tandistricts%>%
+  filter(NAME_0=="Mozambique")
+
+MozambiqueCovid<- Tandistricts%>%
+  filter(NAME_0=="Mozambique")%>%
+  left_join(Covidbe)
+
+Ugandaperiodos<-Tandistricts%>%
+  filter(NAME_0=="Uganda")%>%
+  left_join(Baseperiodos)
+
+Uganda1<-Tandistricts%>%
+  filter(NAME_0=="Uganda")
+
+UgandaCovid<- Tandistricts%>%
+  filter(NAME_0=="Uganda")%>%
+  left_join(Covidbe)
+
+Covidfullmap<- Tandistricts%>%
+  left_join(Covidfull)
+
+```
+
+
+```{r}
+Breaks=c(0, .25, .5, 1, 2, 3, 4 )
+
+Mapexpos=  tm_shape(Exposuremap) + tm_polygons ("Exposure", palette = "Blues", breaks= Breaks)  + tm_layout(bg.color = "white", saturation = 1, legend.text.color = "Black", main.title = "Corona exposure", legend.position= c("left", "center"), main.title.color = "Black", legend.text.size = .5, main.title.position = c("left", "top"),  main.title.size = 1.2, title.position = c("center", "bottom")) + 
+  tm_facets( by= "NAME_0", drop.NA.facets = TRUE, free.scales.fill = FALSE, ncol = 2) + tm_layout(panel.label.size =1, panel.label.height=2)
+```
+
+
+```{r}
+Mapexpos
+```
+
+
+```{r}
+Mapfull=  tm_shape(Covidfullmap) + tm_polygons ("Full", palette = "Blues", style = "quantile")  + tm_layout(bg.color = "white", saturation = 1, legend.text.color = "Black", main.title = "Corona behaviours", legend.position= c("left", "center"), main.title.color = "Black", legend.text.size = .5, main.title.position = c("left", "top"),  main.title.size = 1.2, title.position = c("center", "bottom")) + 
+  tm_facets( by= "NAME_0", drop.NA.facets = TRUE, free.scales.fill = FALSE, ncol = 2) + tm_layout(panel.label.size =1, panel.label.height=2)
+```
+
+
+```{r}
+Mapfull
+```
+
+```{r}
+MapSierra= tm_shape(Sierra1) +  tm_polygons() +tm_shape(Sierraperiodos) + tm_polygons ("Full", palette = "Blues", style = "quantile")  + tm_layout(bg.color = "white", saturation = 1, legend.text.color = "Black", main.title = "Corona behaviours in Sierra Leone", legend.position= c("left", "center"), main.title.color = "Black", legend.text.size = .6, main.title.position = c("left", "top"),  main.title.size = 1.2, title.position = c("center", "bottom")) + 
+  tm_facets( by= "Period", drop.NA.facets = TRUE, free.scales.fill = FALSE) + tm_layout(panel.label.size =.95, panel.label.height=2)
+
+
+MapTanzania= tm_shape(Tanzania1) +  tm_polygons() + tm_shape(Tanzaniaperiodos) + tm_polygons ("Full", palette = "Blues", style = "quantile")  + tm_layout(bg.color = "white", saturation = 1, legend.text.color = "Black", main.title = "Corona behaviours in Tanzania", legend.position= c("left", "center"), main.title.color = "Black", legend.text.size = .6, main.title.position = c("left", "top"),  main.title.size = 1.2, title.position = c("center", "bottom")) + 
+  tm_facets( by= "Period", drop.NA.facets = TRUE, free.scales.fill = FALSE, ncol=2) + tm_layout(panel.label.size =.95, panel.label.height=2)
+
+MapMozambique=  tm_shape(Mozambique1) +  tm_polygons() + 
+  tm_shape(Mozambiqueperiodos) + 
+  tm_polygons ("Full", palette = "Blues", style = "quantile")  + tm_layout(bg.color = "white", saturation = 1, legend.text.color = "Black", main.title = "Corona behaviours in Mozambique", legend.position= c("left", "center"), main.title.color = "Black", legend.text.size = .6, main.title.position = c("left", "top"),  main.title.size = 1.2, title.position = c("center", "bottom")) + 
+  tm_facets( by= "Period", drop.NA.facets = TRUE, free.scales.fill = FALSE, ncol=2) + tm_layout(panel.label.size =.8, panel.label.height=2) 
+
+
+MapUganda= tm_shape(Uganda1) +  tm_polygons() + tm_shape(Ugandaperiodos) + tm_polygons ("Full", palette = "Blues", style = "quantile")  + tm_layout(bg.color = "white", saturation = 1, legend.text.color = "Black", main.title = "Corona behaviours in Uganda", legend.position= c("left", "center"), main.title.color = "Black", legend.text.size = .6, main.title.position = c("left", "top"),  main.title.size = 1.2, title.position = c("center", "bottom")) + 
+  tm_facets( by= "Period", drop.NA.facets = TRUE, free.scales.fill = FALSE, ncol=2) + tm_layout(panel.label.size =.95, panel.label.height=2)
+
+```
+
+
+```{r}
+MapUganda
+```
+
+
+```{r}
+Mapexpos
+```
+
+
+```{r}
+MapSierraCov= tm_shape(Sierra1) +  tm_polygons() +tm_shape(SierraCovid) + tm_polygons ("Average", palette = "Blues", style = "quantile")  + tm_layout(bg.color = "white", saturation = 1, legend.text.color = "Black", main.title = "Corona behaviours in Sierra Leona", legend.position= c("right", "bottom"), main.title.color = "Black", legend.text.size = .6, main.title.position = c("left", "top"),  title.size = 3, title.position = c("center", "bottom"), main.title.size = 1.2) + 
+  tm_facets( by= "Preguntas", drop.NA.facets = TRUE, free.scales.fill = TRUE) + tm_layout(panel.label.size =.95, panel.label.height=2)
+
+
+MapTanzaniaCov= tm_shape(Tanzania1) +  tm_polygons() + tm_shape(TanzaniaCovid) + tm_polygons ("Average", palette = "Blues", style = "quantile")  + tm_layout(bg.color = "white", saturation = 1, legend.text.color = "Black", main.title = "Corona behaviours in Tanzania", legend.position= c("left", "bottom"), main.title.color = "Black", legend.text.size = .6, main.title.position = c("left", "top"),  title.size = 3, title.position = c("center", "bottom"), main.title.size = 1.2) + 
+  tm_facets( by= "Preguntas", drop.NA.facets = TRUE, free.scales.fill = TRUE) + tm_layout(panel.label.size =.95, panel.label.height=2)
+
+MapMozambiqueCov=  tm_shape(Mozambique1) +  tm_polygons() + tm_shape(MozambiqueCovid) + tm_polygons ("Average", palette = "Blues", style = "quantile")  + tm_layout(bg.color = "white", saturation = 1, legend.text.color = "Black", main.title = "Corona behaviours in Mozambique", legend.position= c("right", "bottom"), main.title.color = "Black", legend.text.size = .6, main.title.position = c("left", "top"),  title.size = 3, title.position = c("center", "bottom"), main.title.size = 1.2) + 
+  tm_facets( by= "Preguntas", drop.NA.facets = TRUE, free.scales.fill = TRUE) + tm_layout(panel.label.size =.95, panel.label.height=2)
+
+breaks=c(0,1,1.5, 2, 2.5, 3, 4,5,6)
+
+MapUgandaCov= tm_shape(Uganda1) +  tm_polygons() + tm_shape(UgandaCovid) + tm_polygons ("Average", palette = "Blues")  + tm_layout(bg.color = "white", saturation = 1, legend.text.color = "Black", main.title = "Corona behaviours in Uganda", legend.position = c(0, .6), main.title.color = "Black", legend.text.size = .6, main.title.position = c("left", "center"),  title.size = 3, title.position = c("center", "top"), main.title.size = 1.2) + 
+  tm_facets( by= "Preguntas", drop.NA.facets = TRUE, free.scales.fill = TRUE) + tm_layout(panel.label.size =.95, panel.label.height=2)
+
+```
+
+
+
+```{r}
+MapUgandaCov
+```
+
+
+
+```{r}
+head(Covid)
+```
+
+
+```{r}
+
+unique(Covid$q2a4a)
+
+```
+
+
+
+```{r}
+names(read_dta("LwCAfrica_R1_R12_rv2.dta"))
+```
+
